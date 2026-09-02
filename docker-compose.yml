@@ -1,0 +1,5 @@
+services:
+  mini-redis:
+    build:
+      context: .
+    container_name: mini-redis

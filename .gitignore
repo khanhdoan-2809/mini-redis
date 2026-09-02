@@ -1,0 +1,21 @@
+# Maven
+target/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+
+# Logs
+*.log
+logs/
+
+# Runtime Redis files
+*.rdb
+*.aof
+
+# Temporary files
+*.tmp
+
+# Java
+hs_err_pid*
+replay_pid*
