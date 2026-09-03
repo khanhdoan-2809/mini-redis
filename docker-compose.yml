@@ -3,3 +3,10 @@ services:
     build:
       context: .
     container_name: mini-redis
+
+    environment:
+      MINI_REDIS_HOST: 0.0.0.0
+      MINI_REDIS_PORT: 6379
+
+    ports:
+      - "6379:6379"

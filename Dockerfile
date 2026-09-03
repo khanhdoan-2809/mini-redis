@@ -8,4 +8,5 @@ WORKDIR /app
 COPY --from=builder \
     /app/target/mini-redis-0.1.0-SNAPSHOT.jar \
     /app/mini-redis.jar
+EXPOSE 6379
 ENTRYPOINT ["java", "-jar", "/app/mini-redis.jar"]
