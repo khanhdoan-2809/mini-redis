@@ -22,7 +22,7 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-          cache: maven
+          cache: maven # cache .m2
 
       - name: Show build environment
         run: |
