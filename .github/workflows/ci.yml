@@ -69,7 +69,7 @@ jobs:
 
       - name: Upload JaCoCo Report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: mini-redis-jacoco-report
           path: target/site/jacoco/
@@ -78,7 +78,7 @@ jobs:
 
       - name: Upload Test Report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: test-reports
           path: target/surefire-reports/
@@ -87,7 +87,7 @@ jobs:
 
       - name: Upload MiniRedis JAR
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: mini-redis
           path: |
@@ -97,8 +97,7 @@ jobs:
 
       - name: Build Docker Image
         if: success()
-        run:
-          docker build -t mini-redis:${{ github.sha }} .
+        run: docker build -t mini-redis:${{ github.sha }} .
 
       - name: Show Docker Image
         if: success()
