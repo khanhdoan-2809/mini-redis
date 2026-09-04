@@ -6,25 +6,100 @@ on:
       - master
   pull_request:
 
+  permissions:
+    contents: read
+
 jobs:
   build:
+    name: Build, Test & Report
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
-      - name: Set up Java
-        uses: actions/setup-java@v4
+      - name: Set up Java 21
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 21
           cache: maven
 
+      - name: Show build environment
+        run: |
+          echo "Java:"
+          java --version
+          
+          echo ""
+          echo "Maven:"
+          ./mvnw --version
+          
+          echo ""
+          echo "Git:"
+          git --version
+
       - name: Make Maven Wrapper Executable
         run: chmod +x mvnw
 
-      - name: Verify
-        run: ./mvnw clean verify # check integration test results and quality metrics
+      - name: Build and Verify
+        run: ./mvnw --batch-mode clean verify # check integration test results and quality metrics
+
+      - name: Generate CI Statistics
+        if: always()
+        run: |
+          {
+            echo "## MiniRedis CI Report"
+            echo ""
+
+            echo "### Tests"
+            echo '```'
+
+            if [ -d target/surefire-reports ]; then
+              grep -h "Tests run:" target/surefire-reports/*.txt || echo "No tests found"
+            else
+              echo "No test reports found"
+            fi
+
+            echo '```'
+            echo ""
+
+            echo "### Reports"
+            echo "- JaCoCo coverage report uploaded as artifact"
+            echo "- Surefire test report uploaded as artifact"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload JaCoCo Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mini-redis-jacoco-report
+          path: target/site/jacoco/
+          if-no-files-found: ignore
+          retention-days: 3
+
+      - name: Upload Test Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: target/surefire-reports/
+          if-no-files-found: ignore
+          retention-days: 3
+
+      - name: Upload MiniRedis JAR
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mini-redis
+          path: |
+            target/*.jar
+            !target/original-*.jar
+          retention-days: 3
 
       - name: Build Docker Image
-        run: docker build -t mini-redis:${{ github.sha }} .
+        if: success()
+        run:
+          docker build -t mini-redis:${{ github.sha }} .
+
+      - name: Show Docker Image
+        if: success()
+        run: docker images mini-redis:${{ github.sha }}
