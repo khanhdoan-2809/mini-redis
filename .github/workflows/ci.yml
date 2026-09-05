@@ -107,7 +107,7 @@ jobs:
           name: mini-redis-jacoco-report
           path: target/site/jacoco/
           if-no-files-found: ignore
-          retention-days: 3
+          retention-days: 7
 
       - name: Upload Test Report
         if: always()
@@ -116,7 +116,7 @@ jobs:
           name: test-reports
           path: target/surefire-reports/
           if-no-files-found: ignore
-          retention-days: 3
+          retention-days: 7
 
       - name: Upload MiniRedis JAR
         if: always()
@@ -127,7 +127,7 @@ jobs:
           path: |
             target/*.jar
             !target/original-*.jar
-          retention-days: 3
+          retention-days: 7
 
   compatibility:
     name: Java ${{ matrix.java }} Compatibility
