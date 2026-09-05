@@ -1,9 +1,9 @@
-FROM eclipse-temurin:21-jdk AS builder
+FROM eclipse-temurin:21-jdk-noble AS builder
 WORKDIR /app
 COPY . .
 RUN ./mvnw clean package -DskipTests
 
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:21-jre-noble
 WORKDIR /app
 COPY --from=builder \
     /app/target/mini-redis-0.1.0-SNAPSHOT.jar \
