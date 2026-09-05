@@ -96,8 +96,63 @@ jobs:
       - name: Scan Docker image for vulnerabilities
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ steps.image.outputs.sha }}
+          image-ref: ghcr.io/${{ github.repository }}:${{ github.sha }}
           format: table
           exit-code: 1
           ignore-unfixed: true
 
+      # --------------------------------------------------------
+      # Login to GHCR
+      #
+      # Only required for master/tags.
+      # Pull requests stop after Trivy.
+      # --------------------------------------------------------
+      - name: Login to GHCR
+        if: >
+          github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+#      # --------------------------------------------------------
+#      # Push immutable SHA tag
+#      #
+#      # Example: ghcr.io/user/mini-redis:abc123...
+#      #
+#      # This image can never accidentally move to another commit.
+#      # --------------------------------------------------------
+      - name: Push immutable SHA tag
+        if: >
+          github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        run: docker push ${{ steps.image.outputs.sha }}
+
+      - name: Push release tag
+        if: >
+          github.event_name == 'push' &&
+          ( github.ref == 'refs/heads/master' ||
+          startsWith(github.ref, 'refs/tags/v')
+          )
+        shell: bash
+        run: |
+          while IFS= read -r tag; do
+            if [ -n "$tag" ]; then
+             echo "Pushing: $tag"
+             docker tag ${{ steps.image.outputs.sha }} "$tag"
+             docker push "$tag"
+            fi
+          done << 'EOF'
+          ${{ steps.meta.outputs.tags }}
+          EOF
+      - name: Show published image
+        if: >
+          github.event_name == 'push' &&
+          ( github.ref == 'refs/heads/master' ||
+          startsWith(github.ref, 'refs/tags/v')
+          )
+        run: |
+          echo "Published image:"
+          echo "${{ steps.image.outputs.base }}"
+          echo ""
+          echo "Commit:"
+          echo "${{ github.sha }}"
