@@ -1,5 +1,6 @@
 package io.odyssey.miniredis.server;
 
+import io.odyssey.miniredis.command.CommandDispatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -8,6 +9,7 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -32,8 +34,11 @@ public class RedisServer implements AutoCloseable{
 
     private volatile Thread acceptorThread;
 
-    public RedisServer(ServerConfig config) {
-        this.config = config;
+    private final CommandDispatcher commandDispatcher;
+
+    public RedisServer(ServerConfig config, CommandDispatcher commandDispatcher) {
+        this.config = Objects.requireNonNull(config);
+        this.commandDispatcher = Objects.requireNonNull(commandDispatcher);
     }
 
     public void start() throws IOException {
@@ -86,7 +91,7 @@ public class RedisServer implements AutoCloseable{
 
     private void handleClient(Socket client) {
         try {
-            new ClientHandler(client).run();
+            new ClientHandler(client, commandDispatcher).run();
         }
         finally {
             clients.remove(client);

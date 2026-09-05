@@ -1,5 +1,6 @@
 package io.odyssey.miniredis.server;
 
+import io.odyssey.miniredis.command.CommandDispatcher;
 import io.odyssey.miniredis.protocol.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,17 +12,16 @@ import java.net.Socket;
 public class ClientHandler implements Runnable {
 
     private static final Logger log = LoggerFactory.getLogger(ClientHandler.class);
-
     private static final int BUFFER_SIZE = 1024 * 8;
 
     private final Socket socket;
-
+    private final CommandDispatcher commandDispatcher;
     private final RespDecoder decoder = new RespDecoder();
-
     private final RespEncoder encoder = new RespEncoder();
 
-    public ClientHandler(Socket socket) {
+    public ClientHandler(Socket socket, CommandDispatcher commandDispatcher) {
         this.socket = socket;
+        this.commandDispatcher = commandDispatcher;
     }
 
     @Override
@@ -69,9 +69,8 @@ public class ClientHandler implements Runnable {
             if (decoded.isEmpty()) {
                 return;
             }
-            var request = decoded.get();
-            log.debug("Decoded RESP frame: {}", request.getClass().getSimpleName());
-            output.write(encoder.encode(new RespSimpleString("OK")));
+            var response = commandDispatcher.dispatch(decoded.get());
+            output.write(encoder.encode(response));
             output.flush();
         }
     }
