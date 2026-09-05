@@ -1,4 +1,4 @@
-name: Docker
+name: Release
 
 on:
   push:
@@ -16,10 +16,6 @@ permissions:
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
-
-env:
-  APP_PORT: 6379
-  IMAGE_NAME: ghcr.io/${{ github.repository }}
 
 jobs:
   docker:
@@ -51,8 +47,7 @@ jobs:
           images: ${{ steps.image.outputs.base }}
           tags: | 
             type=sha,format=long,prefix= 
-            type=raw,value=latest,enable={{is_default_branch}} 
-            type=ref,event=tag 
+            type=ref,event=tag
           labels: | 
             org.opencontainers.image.title=MiniRedis 
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }} 
@@ -78,6 +73,7 @@ jobs:
           load: true
           push: false
 
+          # docker tag ${{ steps.image.outputs.sha }} "$tag"
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
@@ -94,7 +90,7 @@ jobs:
       # --------------------------------------------------------
 
       - name: Scan Docker image for vulnerabilities
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ steps.image.outputs.sha }}
           format: table
@@ -117,17 +113,6 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-#      # --------------------------------------------------------
-#      # Push immutable SHA tag
-#      #
-#      # Example: ghcr.io/user/mini-redis:abc123...
-#      #
-#      # This image can never accidentally move to another commit.
-#      # --------------------------------------------------------
-      - name: Push immutable SHA tag
-        if: >
-          github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-        run: docker push ${{ steps.image.outputs.sha }}
 
       - name: Push release tag
         if: >
@@ -139,7 +124,6 @@ jobs:
           while IFS= read -r tag; do
             if [ -n "$tag" ]; then
              echo "Pushing: $tag"
-             docker tag ${{ steps.image.outputs.sha }} "$tag"
              docker push "$tag"
             fi
           done << 'EOF'

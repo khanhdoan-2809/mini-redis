@@ -16,10 +16,9 @@ concurrency:
 
 env:
   JAVA_VERSION: 21
-  APP_PORT: 6379
 
 jobs:
-  dependecy-review:
+  dependency-review:
     name: Dependency Review
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
@@ -34,7 +33,7 @@ jobs:
         uses: actions/dependency-review-action@v5
         with:
           fail-on-severity: high
-          comment-summary-in-pr: true
+          comment-summary-in-pr: always
   build:
     name: Build, Test & Report
     runs-on: ubuntu-latest
@@ -52,6 +51,9 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
           cache: maven # cache .m2
 
+      - name: Make Maven Wrapper Executable
+        run: chmod +x mvnw
+
       - name: Show build environment
         run: |
           echo "Java:"
@@ -64,9 +66,6 @@ jobs:
           echo ""
           echo "Git:"
           git --version
-
-      - name: Make Maven Wrapper Executable
-        run: chmod +x mvnw
 
       - name: Build and Verify
         # check integration test results and quality metrics
@@ -119,7 +118,7 @@ jobs:
           retention-days: 7
 
       - name: Upload MiniRedis JAR
-        if: always()
+        if: success()
         uses: actions/upload-artifact@v7
         with:
           name: mini-redis
