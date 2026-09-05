@@ -1,18 +1,46 @@
 name: CI
 
 on:
-  push:
+  pull_request:
     branches:
       - master
-  pull_request:
+
+  workflow_dispatch: # allow running manually
 
 permissions:
   contents: read # condition for GITHUB_TOKEN
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  JAVA_VERSION: 21
+  APP_PORT: 6379
+
 jobs:
+  dependecy-review:
+    name: Dependency Review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write # Allows the workflow to modify pull requests using GITHUB_TOKEN: comments PR
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Review dependencies
+        uses: actions/dependency-review-action@v5
+        with:
+          fail-on-severity: high
+          comment-summary-in-pr: true
   build:
     name: Build, Test & Report
     runs-on: ubuntu-latest
+
+    timeout-minutes: 15
+
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -21,7 +49,7 @@ jobs:
         uses: actions/setup-java@v6
         with:
           distribution: temurin
-          java-version: 21
+          java-version: ${{ env.JAVA_VERSION }}
           cache: maven # cache .m2
 
       - name: Show build environment
@@ -41,7 +69,12 @@ jobs:
         run: chmod +x mvnw
 
       - name: Build and Verify
-        run: ./mvnw --batch-mode clean verify # check integration test results and quality metrics
+        # check integration test results and quality metrics
+        run: | 
+          ./mvnw \
+            --batch-mode \
+            --no-transfer-progress \
+            clean verify 
 
       - name: Generate CI Statistics
         if: always()
@@ -69,37 +102,56 @@ jobs:
 
       - name: Upload JaCoCo Report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: mini-redis-jacoco-report
           path: target/site/jacoco/
           if-no-files-found: ignore
-          retention-days: 3
+          retention-days: 7
 
       - name: Upload Test Report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-reports
           path: target/surefire-reports/
           if-no-files-found: ignore
-          retention-days: 3
+          retention-days: 7
 
       - name: Upload MiniRedis JAR
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: mini-redis
+          # include target/*.jar and exclude target/original-*.jar
           path: |
             target/*.jar
             !target/original-*.jar
-          retention-days: 3
+          retention-days: 7
 
-      - name: Build Docker Image
-        if: success()
-        run:
-          docker build -t mini-redis:${{ github.sha }} .
-
-      - name: Show Docker Image
-        if: success()
-        run: docker images mini-redis:${{ github.sha }}
+  compatibility:
+    name: Java ${{ matrix.java }} Compatibility
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        java: [ 21, 25 ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Set up Java ${{ matrix.java }}
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+          cache: maven
+      - name: Make Maven Wrapper Executable
+        run: chmod +x mvnw
+      - name: Run test on Java ${{ matrix.java }}
+        run: |
+          ./mvnw \
+            --batch-mode \
+            --no-transfer-progress \
+            clean test

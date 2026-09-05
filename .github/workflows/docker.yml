@@ -1,0 +1,156 @@
+name: Docker
+
+on:
+  push:
+    tags:
+      - "v*"
+  pull_request:
+    branches:
+      - master
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  APP_PORT: 6379
+  IMAGE_NAME: ghcr.io/${{ github.repository }}
+
+jobs:
+  docker:
+    name: Docker Build, Test & Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write # allow pushing/ writing packages to Github Packages
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Prepare image name
+        id: image
+        shell: bash
+        run: |
+          IMAGE="ghcr.io/${GITHUB_REPOSITORY,,}" 
+          echo "base=${IMAGE}" >> "$GITHUB_OUTPUT" 
+          echo "sha=${IMAGE}:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate Docker metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ steps.image.outputs.base }}
+          tags: | 
+            type=sha,format=long,prefix= 
+            type=raw,value=latest,enable={{is_default_branch}} 
+            type=ref,event=tag 
+          labels: | 
+            org.opencontainers.image.title=MiniRedis 
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }} 
+            org.opencontainers.image.revision=${{ github.sha }}
+
+      # --------------------------------------------------------
+      # Build image
+      #
+      # PR:
+        # Build locally, don't push.
+      # # tag:
+        # Build locally, then push after security checks.
+      # --------------------------------------------------------
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          # Load the image into local Docker Daemon so that:
+          # - smoke test
+          # - trivy
+          # can inspect the exact image
+          load: true
+          push: false
+
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+          cache-from: type=gha,scope=mini-redis-docker # before building, try to restore Docker build cache from GitHub Actions' cache storage and scope is a name of the cache
+          cache-to: type=gha,mode=max,scope=mini-redis-docker # After the build, save the Docker build cache into GitHub Actions' cache storage and mode=max is telling Buildx to cache more intermediate layers, not just the final image layers
+
+      # --------------------------------------------------------
+      # Trivy vulnerability scan
+      #
+      # Fail on HIGH and CRITICAL vulnerabilities.
+      #
+      # ignore-unfixed=true means vulnerabilities without a
+      # known fix will not fail the pipeline.
+      # --------------------------------------------------------
+
+      - name: Scan Docker image for vulnerabilities
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.image.outputs.sha }}
+          format: table
+          exit-code: 1
+          ignore-unfixed: true
+          hide-progress: true
+          severity: HIGH,CRITICAL
+
+      # --------------------------------------------------------
+      # Login to GHCR
+      #
+      # Only required for master/tags.
+      # Pull requests stop after Trivy.
+      # --------------------------------------------------------
+      - name: Login to GHCR
+        if: >
+          startsWith(github.ref, 'refs/tags/v')
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+#      # --------------------------------------------------------
+#      # Push immutable SHA tag
+#      #
+#      # Example: ghcr.io/user/mini-redis:abc123...
+#      #
+#      # This image can never accidentally move to another commit.
+#      # --------------------------------------------------------
+      - name: Push immutable SHA tag
+        if: >
+          github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        run: docker push ${{ steps.image.outputs.sha }}
+
+      - name: Push release tag
+        if: >
+          startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        # -r means don't treat backslashes (\) as escape characters.
+        # -n means not empty
+        run: |
+          while IFS= read -r tag; do
+            if [ -n "$tag" ]; then
+             echo "Pushing: $tag"
+             docker tag ${{ steps.image.outputs.sha }} "$tag"
+             docker push "$tag"
+            fi
+          done << 'EOF'
+          ${{ steps.meta.outputs.tags }}
+          EOF
+      - name: Show published image
+        if: >
+          startsWith(github.ref, 'refs/tags/v')
+        run: |
+          echo "Published image:"
+          echo "${{ steps.image.outputs.base }}"
+          echo ""
+          echo "Commit:"
+          echo "${{ github.sha }}"
