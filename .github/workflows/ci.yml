@@ -155,15 +155,3 @@ jobs:
             --batch-mode \
             --no-transfer-progress \
             clean test
-
-#
-#      - name: Build Docker Image
-#        if: success()
-#        run: docker build -t mini-redis:${{ github.sha }} .
-#
-#      - name: Show Docker Image
-#        if: success()
-#        run: |
-#          docker images inspect mini-redis:${{ github.sha }} \
-#            --format='Image: {{.RepoTags}} Size: {{.Size}} bytes'
-#          docker images mini-redis:${{ github.sha }}
