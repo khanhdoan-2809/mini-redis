@@ -19,7 +19,7 @@ public final class CommandDispatcher {
             var request = parser.parse(requestValue);
             var command = registry.find(request.name());
 
-            if (command.isPresent()) {
+            if (command.isEmpty()) {
                 return new RespError("ERR unknown command '" + request.name().toLowerCase() + "'");
             }
 

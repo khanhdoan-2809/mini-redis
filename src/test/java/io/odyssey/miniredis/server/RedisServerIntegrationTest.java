@@ -48,7 +48,8 @@ public class RedisServerIntegrationTest {
 
             var response = client.getInputStream().readNBytes(7);
 
-            assertThat(new String(response, StandardCharsets.US_ASCII)).isEqualTo("+PONG\r\n");
+            assertThat(new String(response, StandardCharsets.US_ASCII))
+                    .isEqualTo("+PONG\r\n");
         }
     }
 }
