@@ -1,5 +1,6 @@
 package io.odyssey.miniredis.command;
 
+import io.odyssey.miniredis.datastore.RedisWrongTypeException;
 import io.odyssey.miniredis.protocol.RespError;
 import io.odyssey.miniredis.protocol.RespValue;
 
@@ -24,7 +25,7 @@ public final class CommandDispatcher {
             }
 
             return command.get().execute(request);
-        } catch (CommandRequestException | CommandExecutionException e) {
+        } catch (CommandRequestException | CommandExecutionException | RedisWrongTypeException e) {
             return new RespError(e.getMessage());
         }
     }
