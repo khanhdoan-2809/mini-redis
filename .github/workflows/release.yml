@@ -84,13 +84,13 @@ jobs:
         shell: bash
         run: |
           docker run \
-            -- detach \
-            -- name mini-redis-smoke \
+            --detach \
+            --name mini-redis-smoke \
             "${{ steps.image.outputs.sha }}"
           
           sleep 3
           
-          if ["$(docker inspect -f '{{.State.Running}}' mini-redis-smoke)" != "true]; then
+          if [ "$(docker inspect -f '{{.State.Running}}' mini-redis-smoke)" != "true" ]; then
             echo "Smoke test failed"
             docker logs mini-redis-smoke
             exit 1
