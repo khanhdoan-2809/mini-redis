@@ -80,6 +80,31 @@ jobs:
           cache-from: type=gha,scope=mini-redis-docker # before building, try to restore Docker build cache from GitHub Actions' cache storage and scope is a name of the cache
           cache-to: type=gha,mode=max,scope=mini-redis-docker # After the build, save the Docker build cache into GitHub Actions' cache storage and mode=max is telling Buildx to cache more intermediate layers, not just the final image layers
 
+      - name: Smoke test Docker image
+        shell: bash
+        run: |
+          docker run \
+            -- detach \
+            -- name mini-redis-smoke \
+            "${{ steps.image.outputs.sha }}"
+          
+          sleep 3
+          
+          if ["$(docker inspect -f '{{.State.Running}}' mini-redis-smoke)" != "true]; then
+            echo "Smoke test failed"
+            docker logs mini-redis-smoke
+            exit 1
+          fi
+          
+          echo "MiniRedis started successfully"
+
+      - name: Cleanup smoke test
+        if: always()
+        # true -> prevent gha step from failing if the command fails
+        run: |
+          docker logs mini-redis-smoke || true
+          docker rm -f mini-redis-smoke || true
+
       # --------------------------------------------------------
       # Trivy vulnerability scan
       #
