@@ -1,5 +1,6 @@
 package io.odyssey.miniredis.command;
 
+import io.odyssey.miniredis.command.core.PingCommand;
 import io.odyssey.miniredis.protocol.RespBulkString;
 import io.odyssey.miniredis.protocol.RespSimpleString;
 import org.junit.jupiter.api.Test;

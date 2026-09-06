@@ -14,7 +14,7 @@ public final class CommandDispatcher {
         this.parser = parser;
     }
 
-    public RespValue dispatch(RespValue requestValue) {
+    public synchronized RespValue dispatch(RespValue requestValue) {
         try {
             var request = parser.parse(requestValue);
             var command = registry.find(request.name());

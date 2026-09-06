@@ -1,5 +1,8 @@
-package io.odyssey.miniredis.command;
+package io.odyssey.miniredis.command.core;
 
+import io.odyssey.miniredis.command.CommandExecutionException;
+import io.odyssey.miniredis.command.CommandRequest;
+import io.odyssey.miniredis.command.RedisCommand;
 import io.odyssey.miniredis.protocol.RespValue;
 
 public class EchoCommand implements RedisCommand {

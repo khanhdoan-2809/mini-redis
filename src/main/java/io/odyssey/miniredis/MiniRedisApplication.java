@@ -1,6 +1,13 @@
 package io.odyssey.miniredis;
 
 import io.odyssey.miniredis.command.*;
+import io.odyssey.miniredis.command.core.EchoCommand;
+import io.odyssey.miniredis.command.core.PingCommand;
+import io.odyssey.miniredis.command.key.DelCommand;
+import io.odyssey.miniredis.command.key.ExistsCommand;
+import io.odyssey.miniredis.command.string.GetCommand;
+import io.odyssey.miniredis.command.string.SetCommand;
+import io.odyssey.miniredis.datastore.RedisDatabase;
 import io.odyssey.miniredis.server.RedisServer;
 import io.odyssey.miniredis.server.ServerConfig;
 import org.slf4j.Logger;
@@ -17,10 +24,17 @@ public class MiniRedisApplication {
 
     public static void main(String[] args) {
         var config = ServerConfig.fromEnvironment();
+        var database = new RedisDatabase();
 
         var registry = new CommandRegistry();
         registry.register("PING", new PingCommand());
         registry.register("ECHO", new EchoCommand());
+
+
+        registry.register("SET", new SetCommand(database));
+        registry.register("GET", new GetCommand(database));
+        registry.register("DEL", new DelCommand(database));
+        registry.register("EXISTS", new ExistsCommand(database));
 
         var parser = new CommandRequestParser();
         var dispatcher = new CommandDispatcher(registry, parser);
