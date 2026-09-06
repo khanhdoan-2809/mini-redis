@@ -98,12 +98,7 @@ public final class RespDecoder {
     private RespError parseError(Cursor cursor) {
         var line = readLine(cursor);
 
-        return new RespError(
-                new String(
-                        line,
-                        StandardCharsets.UTF_8
-                )
-        );
+        return new RespError(new String(line, StandardCharsets.UTF_8));
     }
 
     private RespInteger parseInteger(Cursor cursor) {
@@ -278,18 +273,13 @@ public final class RespDecoder {
     }
 
     private void compactIfNecessary() {
-
         if (readPosition == writePosition) {
-
             readPosition = 0;
             writePosition = 0;
-
             return;
         }
 
-        if (readPosition
-                > buffer.length / 2) {
-
+        if (readPosition > buffer.length / 2) {
             compact();
         }
     }
@@ -316,21 +306,13 @@ public final class RespDecoder {
 
         private int position;
 
-        private Cursor(
-                int position
-        ) {
-            this.position =
-                    position;
+        private Cursor(int position) {
+            this.position = position;
         }
     }
 
-    private static final class
-    IncompleteRespException
-            extends RuntimeException {
-
-        private static final
-        IncompleteRespException INSTANCE =
-                new IncompleteRespException();
+    private static final class IncompleteRespException extends RuntimeException {
+        private static final IncompleteRespException INSTANCE = new IncompleteRespException();
 
         private IncompleteRespException() {
             super(

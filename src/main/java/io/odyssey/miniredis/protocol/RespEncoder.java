@@ -11,12 +11,8 @@ public final class RespEncoder {
                     StandardCharsets.US_ASCII
             );
 
-    public byte[] encode(
-            RespValue value
-    ) {
-
+    public byte[] encode(RespValue value) {
         Objects.requireNonNull(value);
-
         var output = new ByteArrayOutputStream();
         writeValue(output, value);
 
@@ -74,16 +70,8 @@ public final class RespEncoder {
         output.writeBytes(value.getBytes(StandardCharsets.US_ASCII));
     }
 
-    private void writeUtf8(
-            ByteArrayOutputStream output,
-            String value
-    ) {
-
-        output.writeBytes(
-                value.getBytes(
-                        StandardCharsets.UTF_8
-                )
-        );
+    private void writeUtf8(ByteArrayOutputStream output, String value) {
+        output.writeBytes(value.getBytes(StandardCharsets.UTF_8));
     }
 
     private void writeCrlf(ByteArrayOutputStream output) {
