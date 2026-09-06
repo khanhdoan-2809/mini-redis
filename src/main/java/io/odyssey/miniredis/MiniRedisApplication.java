@@ -3,8 +3,11 @@ package io.odyssey.miniredis;
 import io.odyssey.miniredis.command.*;
 import io.odyssey.miniredis.command.core.EchoCommand;
 import io.odyssey.miniredis.command.core.PingCommand;
+import io.odyssey.miniredis.command.expiry.ExpirationScheduler;
 import io.odyssey.miniredis.command.key.DelCommand;
 import io.odyssey.miniredis.command.key.ExistsCommand;
+import io.odyssey.miniredis.command.key.ExpireCommand;
+import io.odyssey.miniredis.command.key.TtlCommand;
 import io.odyssey.miniredis.command.string.GetCommand;
 import io.odyssey.miniredis.command.string.SetCommand;
 import io.odyssey.miniredis.datastore.RedisDatabase;
@@ -30,19 +33,23 @@ public class MiniRedisApplication {
         registry.register("PING", new PingCommand());
         registry.register("ECHO", new EchoCommand());
 
-
         registry.register("SET", new SetCommand(database));
         registry.register("GET", new GetCommand(database));
         registry.register("DEL", new DelCommand(database));
         registry.register("EXISTS", new ExistsCommand(database));
+        registry.register("EXPIRE", new ExpireCommand(database));
+        registry.register("TTL", new TtlCommand(database));
 
         var parser = new CommandRequestParser();
         var dispatcher = new CommandDispatcher(registry, parser);
 
-        try (var server = new RedisServer(config, dispatcher)) {
+        try (var server = new RedisServer(config, dispatcher);
+            var expirationScheduler = new ExpirationScheduler(database)) {
             Runtime.getRuntime()
                     .addShutdownHook(Thread.ofPlatform().name("redis-shutdown")
                             .unstarted(server::close));
+
+            expirationScheduler.start();
             server.start();
             server.awaitTermination();
         } catch (IOException e) {
